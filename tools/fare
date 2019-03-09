@@ -1,0 +1,137 @@
+#!/bin/sh
+
+set -e
+
+usage() {
+    echo "Usage: fare [OPTIONS] [FILE]"
+    echo
+    echo "  -h, --help          display this help and exit"
+    echo "  -s, --shot          take and upload screenshot"
+    echo "  -S, --server URL    specify server URL to use"
+    echo "  -t, --shot-tool     specify tool to take screenshot with"
+    echo
+    echo "Environment variables"
+    echo "  \$FARE_CUL          alternative path to curl command"
+    echo "  \$FARE_SERVER       remote server URL to upload data to"
+    echo "  \$FARE_SHOT_TOOL    tool to use to take screenshot"
+}
+
+halt() {
+    echo "fare: $1"
+    echo "Try fare --help for more information."
+    exit 1
+}
+
+upload() {
+    curl=$1
+    file=$2
+    server=$3
+    mime=$(file -b --mime-type "$file")
+    name=$(basename "$file")
+    $curl -H "Content-Type: $mime" -H "X-Filename: $name" \
+          --data-binary "@$file" "$server"
+    echo
+}
+
+CURL=$(which curl)
+if [ -n "$FARE_CURL" ]
+then
+    CURL=$FARE_CURL
+else
+    if [ ! -x "$CURL" ]
+    then
+        halt "curl tool is not found"
+    fi
+fi
+
+tmp_dir=$(mktemp -d -t fare-XXXXXX)
+shot_file="$tmp_dir/fare.png"
+data_file="$tmp_dir/fare"
+trap "rm -rf $tmp_dir" EXIT
+
+show_usage=
+shot=
+shot_tool=$FARE_SHOT_TOOL
+file=
+server=$FARE_SERVER
+
+while [ -n "$1" ]
+do
+    case "$1" in
+        -h|--help)
+            show_usage=y
+            shift
+            ;;
+        -s|--shot)
+            shot=y
+            shift
+            ;;
+        -S|--server)
+            shift
+            server=$1
+            shift
+            ;;
+        -t|--shot-tool)
+            shift
+            shot_tool=$1
+            shift
+            ;;
+        -*)
+            halt "invalid option $1"
+            ;;
+        *)
+            if [ -n "$file" ]
+            then
+                halt "only one positional argument allowed"
+            fi
+            file=$1
+            shift
+            ;;
+    esac
+done
+
+if [ -n "$show_usage" ]
+then
+    usage
+    exit 0
+fi
+
+if [ -z "$server" ]
+then
+    halt "server address is not specified. -S option or \$FARE_SERVER environment variable required."
+fi
+
+if [ -t 0 ]
+then
+    if [ -n "$file" ]
+    then
+        upload "$CURL" "$file" "$server"
+        exit 0
+    fi
+else
+    cat > "$data_file"
+    upload "$CURL" "$data_file" "$server"
+    exit 0
+fi
+
+
+if [ -n "$shot" ]
+then
+    tool=$FARE_SHOT_TOOL
+    if [ -n "$shot_tool" ]
+    then
+        tool=$shot_tool
+    fi
+    if [ -z "$tool" ]
+    then
+        halt "screenshot capturing tool is not specified. -T option or \$FARE_SHOT_TOOL environment variable required."
+        echo "Try fare --help for more information."
+        exit 1
+    fi
+
+    $tool "$shot_file" > /dev/null
+    upload "$CURL" "$shot_file" "$server"
+    exit 0
+fi
+
+halt "missing FILE argument"
