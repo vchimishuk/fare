@@ -1,0 +1,13 @@
+#!/usr/bin/make -f
+# -*- makefile -*-
+
+export DH_VERBOSE=1
+
+%:
+	dh $@
+
+override_dh_auto_install:
+	install -g 0 -o 0 -d debian/fare
+	cp -r etc debian/fare
+	cp -r lib debian/fare
+	cp -r usr debian/fare
