@@ -1,0 +1,42 @@
+README
+    fare is a pastebin-like files hosting web-service. It is oriented for
+    shell usage (no web form to upload files and command line client out of
+    the box).
+
+INSTALL
+    To install it on Debian/Ubuntu system you can build and install deb-package
+    with next command.
+    $ debuild
+    # dpkg --install ../fare_1.0.0_all.deb
+    The service can be configured with /etc/fare.conf configuration file and
+    controlled with systemd.
+
+USAGE
+    The simplest and most convenient way to use the service is to use
+    `tools/fare` tool from the current distribution. See `fare --help`
+    for more details.
+
+    To upload file or text snippet using raw HTTP API you can use:
+    1. Use multipart/form-data HTTP POST request with `file` field containing
+       file contents.
+       Examples:
+       $ curl -F file=@file.txt https://fare-server.address
+       $ cat file.txt | curl -F file=@- https://fare-server.address
+       $ wget -q -O - --header="Content-type: multipart/form-data boundary=FILEUPLOAD" \
+         --post-file file.txt https://fare-server.address
+    2. Use REST API -- send POST request with a file contents as a body.
+       Optional request header `X-Filename` can be used to specify filename.
+       Examples.
+       $ curl -H "Content-Type: image/png" -H "X-Filename: image.png" \
+         --data-binary @image.png https://fare-server.address
+       $ wget -q -O - --header="Content-type: image/png" --header="X-Filename: image.png" \
+         --post-file image.png https://fare-server.address
+
+AUTHORS
+    Viacheslav Chimishuk <vchimishuk@yandex.ru>
+
+COPYING
+    This program is released under the GNU General Public License version 3 or
+    later, which is distributed in the COPYING file. You should have received a
+    copy of the GNU General Public License along with this program.  If not,
+    see <http://www.gnu.org/licenses/>.
