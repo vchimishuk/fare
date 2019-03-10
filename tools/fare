@@ -1,5 +1,12 @@
 #!/bin/sh
 
+# fare files sharing console client.
+#
+# Copyright (C) 2019 Viacheslav Chimishuk <vchimishuk@yandex.ru>
+#
+# Home page: https://github.com/vchimishuk/fare
+# See fare --help for documentation.
+
 set -e
 
 usage() {

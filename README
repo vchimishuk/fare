@@ -32,6 +32,10 @@ USAGE
        $ wget -q -O - --header="Content-type: image/png" --header="X-Filename: image.png" \
          --post-file image.png https://fare-server.address
 
+    There is also Emacs client interface for the service, which provides
+    convenient way to post buffer or selected region. See `emacs/fare.el`
+    file from the current distribution.
+
 AUTHORS
     Viacheslav Chimishuk <vchimishuk@yandex.ru>
 
