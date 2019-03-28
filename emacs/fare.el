@@ -39,7 +39,7 @@
 (defun fare-post-text (text)
   "Post text snippet and return URL to newly created file."
   (let ((url-request-method "POST")
-        (url-extra-headers '(("Content-Type" . "text/plain")))
+        (url-request-extra-headers '(("Content-Type" . "text/plain")))
         (url-request-data text))
     (url-retrieve fare-server (lambda (status)
                                 (if (fare-ok-p (current-buffer))
