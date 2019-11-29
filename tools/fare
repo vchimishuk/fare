@@ -10,15 +10,20 @@
 set -e
 
 usage() {
-    echo "Usage: fare [OPTIONS] [FILE]"
+    echo "Usage: fare [-c] [-C tool] [-S server] [FILE]"
+    echo "       fare [-c] [-C tool] [-S server] [-t tool] -s [FILE]"
+    echo "       fare -h"
     echo
+    echo "  -c, --clipboard     copy result URL to clipbard instead writing it to stdout"
+    echo "  -C, --clip-tool     specify tool to store into clipboard"
     echo "  -h, --help          display this help and exit"
     echo "  -s, --shot          take and upload screenshot"
     echo "  -S, --server URL    specify server URL to use"
     echo "  -t, --shot-tool     specify tool to take screenshot with"
     echo
     echo "Environment variables"
-    echo "  \$FARE_CUL          alternative path to curl command"
+    echo "  \$FARE_CLIP_TOOL    tool to use to store into clipboard"
+    echo "  \$FARE_CURL         alternative path to curl command"
     echo "  \$FARE_SERVER       remote server URL to upload data to"
     echo "  \$FARE_SHOT_TOOL    tool to use to take screenshot"
 }
@@ -35,27 +40,17 @@ upload() {
     server=$3
     mime=$(file -b --mime-type "$file")
     name=$(basename "$file")
-    $curl -H "Content-Type: $mime" -H "X-Filename: $name" \
+    $curl -s -H "Content-Type: $mime" -H "X-Filename: $name" \
           --data-binary "@$file" "$server"
     echo
 }
 
-CURL=$(which curl)
-if [ -n "$FARE_CURL" ]
-then
-    CURL=$FARE_CURL
-else
-    if [ ! -x "$CURL" ]
-    then
-        halt "curl tool is not found"
-    fi
-fi
-
 tmp_dir=$(mktemp -d -t fare-XXXXXX)
-shot_file="$tmp_dir/fare.png"
-data_file="$tmp_dir/fare"
 trap "rm -rf $tmp_dir" EXIT
 
+curl=$FARE_CURL
+clipboard=
+clip_tool=$FARE_CLIP_TOOL
 show_usage=
 shot=
 shot_tool=$FARE_SHOT_TOOL
@@ -65,6 +60,10 @@ server=$FARE_SERVER
 while [ -n "$1" ]
 do
     case "$1" in
+        -c|--clipboard)
+            clipboard=y
+            shift
+            ;;
         -h|--help)
             show_usage=y
             shift
@@ -108,37 +107,49 @@ then
     halt "server address is not specified. -S option or \$FARE_SERVER environment variable required."
 fi
 
-if [ -t 0 ]
+if [ -z "$curl" ]
 then
-    if [ -n "$file" ]
-    then
-        upload "$CURL" "$file" "$server"
-        exit 0
-    fi
-else
-    cat > "$data_file"
-    upload "$CURL" "$data_file" "$server"
-    exit 0
+    curl=curl
+fi
+
+if [ -z "$clip_tool" ]
+then
+    clip_tool=xclip
 fi
 
 
 if [ -n "$shot" ]
 then
-    tool=$FARE_SHOT_TOOL
-    if [ -n "$shot_tool" ]
+    if [ -z "$shot_tool" ]
     then
-        tool=$shot_tool
-    fi
-    if [ -z "$tool" ]
-    then
-        halt "screenshot capturing tool is not specified. -T option or \$FARE_SHOT_TOOL environment variable required."
+        halt "screenshot capturing tool is not specified. -t option or \$FARE_SHOT_TOOL environment variable required."
         echo "Try fare --help for more information."
         exit 1
     fi
 
-    $tool "$shot_file" > /dev/null
-    upload "$CURL" "$shot_file" "$server"
-    exit 0
+    if [ -z "$file" ]
+    then
+        file="$tmp_dir/fare.png"
+    fi
+    $shot_tool "$file" > /dev/null
+else
+    if [ -t 0 ]
+    then
+        if [ -z "$file" ]
+        then
+            halt "missing FILE argument"
+        fi
+    else
+        file="$tmp_dir/data"
+        cat > "$file"
+    fi
 fi
 
-halt "missing FILE argument"
+url=$(upload "$curl" "$file" "$server")
+
+if [ -z "$clipboard" ]
+then
+    echo $url
+else
+    echo -n "$url" | $clip_tool
+fi
