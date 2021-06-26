@@ -3,6 +3,7 @@ Description=File share daemon
 
 [Service]
 ExecStart=/usr/bin/python3 /usr/lib/fare/fare.py
+Restart=always
 User=nobody
 Group=nogroup
 
